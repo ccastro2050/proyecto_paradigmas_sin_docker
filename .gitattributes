@@ -1,0 +1,2 @@
+# Los scripts SQL mantienen LF para que el diff sea estable entre entornos
+*.sql text eol=lf
