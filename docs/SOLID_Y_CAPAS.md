@@ -10,30 +10,83 @@
 
 Organizar el sistema en **niveles con responsabilidades distintas**, donde
 cada capa solo conoce a la inmediatamente inferior y siempre a través de un
-contrato:
+contrato. Así se ve el **viaje de UNA petición** por dentro de la API — el
+"diagrama de palitos" del curso:
 
 ```
-DENTRO DE LA API (desde la v1):          EL SISTEMA COMPLETO (meta, v6):
-┌────────────────────────┐               ┌─────────────────────────┐
-│ CONTROLLER  (HTTP)     │               │ CAPA 1: FRONT (v6)      │
-│  no toca SQL           │               │  solo pinta y llama APIs│
-├────────────────────────┤               ├─────────────────────────┤
-│ SERVICIO    (negocio)  │               │ CAPA 2: APIs (v1…v5)    │
-│  no conoce FastAPI     │               │  solo JSON              │
-│  ni el motor           │               ├─────────────────────────┤
-├────────────────────────┤               │ CAPA 3: DATOS (v1…)     │
-│ REPOSITORIO (SQL)      │               │  PostgreSQL → +MariaDB  │
-│  no conoce HTTP        │               │  → +SQL Server          │
-└────────────────────────┘               └─────────────────────────┘
+            EL CLIENTE (navegador, Swagger, curl)
+                 │
+                 │  ① GET /api/producto/PR001
+                 ▼
+┌─────────────────────────────────────────────────────┐
+│ CAPA 1 — CONTROLLER (HTTP)                          │
+│ controllers/producto_controller.py                  │
+│ Recibe la petición y traduce el resultado a códigos │
+│ HTTP y JSON. NO tiene negocio. NO tiene SQL.        │
+└────────────────┬────────────────────────────────────┘
+                 │  ② servicio.obtener_por_codigo("PR001")
+                 ▼
+┌─────────────────────────────────────────────────────┐
+│ CAPA 2 — SERVICIO (negocio)                         │
+│ servicios/servicio_producto.py                      │
+│ Las reglas del dominio: qué se puede y qué no (el   │
+│ 404 "no existe" NACE aquí). NO conoce FastAPI.      │
+│ NO sabe qué motor hay debajo.                       │
+└────────────────┬────────────────────────────────────┘
+                 │  ③ repositorio.obtener_por_codigo("PR001")
+                 │     — a través de la INTERFAZ IRepositorioProducto
+                 ▼
+┌─────────────────────────────────────────────────────┐
+│ CAPA 3 — REPOSITORIO (datos)                        │
+│ repositorios/repositorio_producto_postgresql.py     │
+│ El SQL: traduce filas ↔ objetos. NO conoce HTTP.    │
+│ NO decide negocio.                                  │
+└────────────────┬────────────────────────────────────┘
+                 │  ④ SELECT … FROM producto WHERE codigo = 'PR001'
+                 ▼
+          ┌───────────────┐
+          │ BASE DE DATOS │  PostgreSQL — bdfacturas
+          └───────┬───────┘
+                  │
+   y la respuesta hace el viaje DE VUELTA:
+   fila → dict (repositorio) → dict (servicio) → JSON + 200 (controller)
 ```
+
+Qué hace — y qué tiene PROHIBIDO — cada capa:
+
+| Capa | Su trabajo | Prohibido para ella | En la v1 |
+|---|---|---|---|
+| **Controller** | HTTP: rutas, códigos de estado, JSON | SQL y reglas de negocio | `controllers/producto_controller.py` |
+| **Servicio** | Las reglas del negocio (¿existe? ¿se puede?) | Saber de HTTP o del motor de BD | `servicios/servicio_producto.py` |
+| **Repositorio** | El SQL y el mapeo fila ↔ objeto | Saber de HTTP o decidir negocio | `repositorios/repositorio_producto_postgresql.py` |
 
 **La regla de oro:** las dependencias apuntan en una sola dirección y cruzan
 por **interfaces**. El controller conoce al servicio; el servicio conoce la
-interfaz del repositorio; **nadie** conoce dos capas hacia abajo.
+interfaz del repositorio; **nadie** conoce dos capas hacia abajo (el
+controller no sabe que existe PostgreSQL).
+
+**El mismo viaje cuando algo sale mal** — `GET /api/producto/PR999`:
+
+1. El **repositorio** no encuentra la fila y devuelve `None` — un HECHO,
+   sin opinión.
+2. El **servicio** decide qué significa ese hecho: "ese producto no
+   existe" — una DECISIÓN de negocio.
+3. El **controller** la traduce al idioma HTTP: **404** con su JSON.
+
+Cada capa aportó exactamente lo suyo: datos → hecho, negocio → decisión,
+HTTP → código de estado.
 
 **Justificación:** cada capa se puede cambiar, probar o reemplazar sin tocar
 las otras. La prueba viva es el criterio 6 de la v1: el servicio se prueba con
 un repositorio falso, sin base de datos.
+
+Y el SISTEMA COMPLETO (la meta, v6) repite el patrón a lo grande:
+
+```
+CAPA 1: FRONT (v6)      → solo pinta y llama APIs
+CAPA 2: APIs (v1…v5)    → solo JSON
+CAPA 3: DATOS (v1…)     → PostgreSQL → +MariaDB → +SQL Server
+```
 
 ## 2. Los cinco principios SOLID
 
@@ -48,6 +101,20 @@ cada principio tenga su momento de demostración en la ruta de versiones:
 las reglas de negocio; el repositorio si cambia el SQL. Tres archivos, tres
 razones de cambio, cero mezcla.
 
+```python
+# ❌ Sin S: un "controller" con tres razones de cambio (HTTP + negocio + SQL)
+@router.get("/api/producto/{codigo}")
+async def obtener(codigo: str):
+    fila = await sesion.execute(text("SELECT ..."))    # SQL aquí = mezcla
+    if fila is None:                                   # negocio aquí = mezcla
+        return JSONResponse(status_code=404, ...)
+
+# ✅ Con S (la v1): tres archivos, una razón de cambio cada uno
+#   controllers/   → cambia solo si cambia el HTTP
+#   servicios/     → cambia solo si cambian las reglas
+#   repositorios/  → cambia solo si cambia el SQL
+```
+
 ### O — Abierto/Cerrado (*Open/Closed*)
 > Abierto a extensión, cerrado a modificación: agregar sin romper lo que hay.
 
@@ -55,6 +122,17 @@ razones de cambio, cero mezcla.
 (`RepositorioProductoMysqlMariaDB`) y una línea en la fábrica — controllers y
 servicios no se tocan. Si en la v3 hay que modificar el servicio, el diseño de
 la v1 estuvo mal (por eso la v1 deja las interfaces listas).
+
+```python
+# La v3 AGREGARÁ sin modificar: una clase nueva con la misma interfaz...
+class RepositorioProductoMariaDB:
+    """Los mismos 5 métodos que promete IRepositorioProducto."""
+
+# ...y el ensamblador (ÚNICO archivo tocado) elegirá el motor:
+repositorio = (RepositorioProductoMariaDB(cadena)
+               if motor == "mariadb"
+               else RepositorioProductoPostgreSQL(cadena))
+```
 
 ### L — Sustitución de Liskov (*Liskov Substitution*)
 > Donde sirve el tipo base, debe servir CUALQUIER implementación, sin sorpresas.
@@ -64,6 +142,17 @@ la v1 estuvo mal (por eso la v1 deja las interfaces listas).
 servicio: mismos métodos, misma semántica, mismos errores. Cambiar
 `DB_PROVIDER` y que nada se rompa ES la prueba de Liskov.
 
+```python
+# Ya se ve en la v1: el repositorio FALSO de la prueba (criterio 6)
+class RepositorioFalso:
+    """Sin base de datos: un diccionario en memoria, misma interfaz."""
+    async def obtener_por_codigo(self, codigo: str) -> dict | None:
+        return self._datos.get(codigo)
+    # ...los otros 4 métodos...
+
+servicio = ServicioProducto(RepositorioFalso())   # ← el servicio NI SE ENTERA
+```
+
 ### I — Segregación de Interfaces (*Interface Segregation*)
 > Muchas interfaces pequeñas y específicas, no una gigante que obligue a
 > implementar lo que no se usa.
@@ -71,6 +160,19 @@ servicio: mismos métodos, misma semántica, mismos errores. Cambiar
 **En la v1:** `IRepositorioProducto` tiene exactamente los 5 métodos del CRUD
 de producto — no un `IRepositorioUniversal` con 40 métodos. Cuando la v2
 agregue persona, tendrá SU interfaz.
+
+```python
+# ✅ La interfaz de la v1: SOLO los 5 métodos del CRUD de producto
+class IRepositorioProducto(Protocol):
+    async def obtener_todos(self, limite: int) -> list[dict]: ...
+    async def obtener_por_codigo(self, codigo: str) -> dict | None: ...
+    async def crear(self, datos: dict) -> bool: ...
+    async def actualizar(self, codigo: str, datos: dict) -> int: ...
+    async def eliminar(self, codigo: str) -> int: ...
+
+# ❌ El anti-ejemplo: un IRepositorioUniversal de 40 métodos donde cada
+#    clase implementa 35 con "raise NotImplementedError".
+```
 
 ### D — Inversión de Dependencias (*Dependency Inversion*)
 > Depender de abstracciones, no de implementaciones concretas.
