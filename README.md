@@ -136,7 +136,7 @@ proyecto_paradigmas_sin_docker/
 │   ├── GUIA_IA.md               # Cómo reconstruir la versión desde 0 con ayuda de una IA
 │   ├── ENTORNO_LOCAL.md         # PostgreSQL como servicio + venv + uvicorn, explicados
 │   ├── PARADIGMA_POO.md         # Material conceptual: POO (con Pydantic), SOLID+capas,
-│   ├── SOLID_Y_CAPAS.md         #   ACID y SDD (un .md por tema)
+│   ├── SOLID_CAPAS_PATRONES.md         #   ACID y SDD (un .md por tema)
 │   ├── PRINCIPIOS_ACID.md       #
 │   ├── SDD_SPECKIT.md           #
 │   ├── TUTORIAL_PGADMIN.md      # Tutoriales de administración de la BD, paso a paso
@@ -187,7 +187,7 @@ aceptación (se cierra con tag). Detalle completo:
 |---|---|
 | [SDD y Spec Kit](docs/SDD_SPECKIT.md) | La metodología con la que se trabaja este curso: la spec manda sobre el código |
 | [El paradigma P.O.O.](docs/PARADIGMA_POO.md) | Qué es un paradigma, los 4 pilares, la P.O.O. de Python (`Protocol`, duck typing) y **Pydantic** como clases que validan datos |
-| [SOLID y programación por capas](docs/SOLID_Y_CAPAS.md) | Los 5 principios y las capas — y en qué versión se demuestra cada uno |
+| [SOLID, capas y patrones de diseño](docs/SOLID_CAPAS_PATRONES.md) | Los 5 principios y las capas — y en qué versión se demuestra cada uno |
 | [Principios ACID](docs/PRINCIPIOS_ACID.md) | Las 4 garantías transaccionales, por qué una facturación las exige, y el contraste con BASE |
 | [El entorno local](docs/ENTORNO_LOCAL.md) | PostgreSQL como servicio de Windows, pgAdmin, el venv y `uvicorn --reload` — qué es cada pieza y cómo se relacionan |
 | [Tutorial pgAdmin](docs/TUTORIAL_PGADMIN.md) | Administrar la BD paso a paso: conectarse, explorar, editar datos (y verlos cambiar en la API), Query Tool y ERD |

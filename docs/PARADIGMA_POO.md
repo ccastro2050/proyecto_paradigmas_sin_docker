@@ -122,7 +122,7 @@ Mírelo con lentes de paradigma — Pydantic es dos paradigmas cooperando:
    servicio con un repositorio falso en memoria) solo es posible porque el
    servicio depende de una abstracción, no de PostgreSQL.
 4. **Puente a SOLID:** los principios SOLID (documento
-   [SOLID_Y_CAPAS.md](SOLID_Y_CAPAS.md)) son reglas de diseño **dentro** del
+   [SOLID_CAPAS_PATRONES.md](SOLID_CAPAS_PATRONES.md)) son reglas de diseño **dentro** del
    paradigma orientado a objetos — sin P.O.O. no hay SOLID que aplicar.
 
 ## 6. Ejemplo resumido: la v1 vista con lentes de P.O.O.

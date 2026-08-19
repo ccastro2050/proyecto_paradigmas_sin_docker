@@ -1,8 +1,8 @@
-# SOLID y programación por capas
+# SOLID, programación por capas y patrones de diseño
 
-> Documento conceptual del curso. Los cinco principios SOLID y la arquitectura
-> por capas: qué son, por qué importan, y dónde se ven (o se verán) en cada
-> versión del proyecto.
+> Documento conceptual del curso. Los cinco principios SOLID, la arquitectura
+> por capas y los patrones de diseño que este código usa: qué son, por qué
+> importan, y dónde se ven (o se verán) en cada versión del proyecto.
 
 ---
 
@@ -211,7 +211,88 @@ def crear_servicio_producto() -> IServicioProducto:
 
 Tres líneas que compran, sin costo extra hoy, toda la ruta v3–v4.
 
-## 5. Referencias
+## 5. Patrones de diseño (los que trabajan en este proyecto)
+
+**¿Qué es un patrón de diseño?** Una solución **con nombre**, probada y
+reutilizable, para un problema de diseño que aparece una y otra vez. No es
+código para copiar y pegar: es la FORMA de una solución — qué clases y qué
+interfaces participan, y quién conoce a quién — que cada proyecto escribe
+en su propio código. El catálogo clásico es el del "Gang of Four" (GoF,
+1994): 23 patrones en tres familias — **creacionales** (cómo se construyen
+los objetos), **estructurales** (cómo se componen) y **de comportamiento**
+(cómo colaboran). Otros, como Repositorio y DTO, vienen del catálogo de
+arquitectura empresarial de Fowler (PoEAA, 2002).
+
+La relación con lo anterior: **SOLID dice qué cualidades debe tener el
+diseño; los patrones son recetas concretas que las consiguen; las capas
+son el plano general donde unos y otras viven.** Y el nombre importa:
+decir "esto es una fábrica abstracta" comunica un diseño completo en tres
+palabras.
+
+Los que trabajan en este código:
+
+| Patrón | Familia | Dónde vive aquí |
+|---|---|---|
+| **Repositorio** (Repository) | arquitectónico (PoEAA) | `repositorios/`: todo el acceso a datos detrás de una interfaz |
+| **Inyección de dependencias** | creacional (IoC) | los constructores + el ensamblador (`crear_servicio_producto()`) |
+| **DTO** — modelo de petición | arquitectónico (PoEAA) | `models/`: un modelo Pydantic por verbo que valida la forma del body |
+| **Fábrica** (Factory) | creacional (GoF) | hoy proto-fábrica; se vuelve fábrica real cuando lleguen más motores (v3 del mapa) |
+| **Estrategia** (Strategy) | comportamiento (GoF) | implícito: implementaciones intercambiables tras cada interfaz |
+
+### Repositorio — el negocio pide datos a un contrato, no a un motor
+
+```python
+# El contrato (repositorios/abstracciones/):
+async def obtener_por_codigo(self, codigo: str) -> dict | None: ...
+
+# ServicioProducto lo usa SIN saber si detrás hay PostgreSQL o un
+# diccionario en memoria (la prueba de capas del criterio 6).
+```
+
+### Inyección de dependencias — nadie construye lo que necesita
+
+```python
+class ServicioProducto:
+    def __init__(self, repositorio: IRepositorioProducto):  # ← llega armado
+        self._repositorio = repositorio
+
+# El ÚNICO lugar que conoce la clase concreta es el ensamblador:
+def crear_servicio_producto() -> IServicioProducto:
+    return ServicioProducto(RepositorioProductoPostgreSQL(cadena))
+```
+
+### DTO por verbo — el body aterriza en un modelo que solo valida forma
+
+```python
+class Producto(BaseModel):                       # POST: todo obligatorio
+    codigo: str = Field(min_length=1, max_length=20)
+    stock: int = Field(ge=0)
+    # Un body inválido muere en 422 ANTES de tocar servicio o BD.
+
+class ProductoActualizar(BaseModel):             # PATCH: todo opcional
+    ...
+```
+
+### Fábrica — UNA decisión de motor, en un solo lugar
+
+```python
+# La proto-fábrica de la v1 (ensamblador) se convertirá en fábrica real
+# cuando lleguen más motores (v3 del mapa):
+def crear_repositorio_producto(motor: str) -> IRepositorioProducto:
+    if motor == "mariadb":
+        return RepositorioProductoMariaDB(cadena_mariadb)
+    return RepositorioProductoPostgreSQL(cadena_postgres)
+# Agregar un motor = UNA clase nueva y UNA rama aquí — nada más se toca.
+```
+
+### Estrategia — el patrón que va de regalo
+
+La pareja "interfaz + implementaciones intercambiables"
+(`RepositorioProductoPostgreSQL`, el `RepositorioFalso` de la prueba — y
+los motores que vengan) es la esencia de Strategy: quien usa la interfaz
+jamás pregunta cuál implementación le tocó.
+
+## 6. Referencias
 
 1. Robert C. Martin — *Design Principles and Design Patterns* (el artículo
    original de los principios, 2000):
@@ -220,9 +301,13 @@ Tres líneas que compran, sin costo extra hoy, toda la ruta v3–v4.
    dependencia y SOLID aplicado a arquitectura.
 3. Martin Fowler — *PresentationDomainDataLayering*:
    <https://martinfowler.com/bliki/PresentationDomainDataLayering.html>
-4. Refactoring Guru (es) — principios de diseño:
+4. Refactoring Guru (es) — patrones de diseño explicados:
    <https://refactoring.guru/es/design-patterns/what-is-pattern>
-5. En este repositorio: el [plan de la v1](spec_kit/versiones/v1_producto_postgres/3_plan.md)
+5. Gamma, Helm, Johnson y Vlissides — *Design Patterns* (GoF, 1994): el
+   catálogo original de los 23 patrones.
+6. Martin Fowler — *Patterns of Enterprise Application Architecture*
+   (PoEAA, 2002): Repositorio, DTO y compañía.
+7. En este repositorio: el [plan de la v1](spec_kit/versiones/v1_producto_postgres/3_plan.md)
    (§3 capas, §4.1 interfaces, §4.3 la proto-fábrica) y el
    [mapa de versiones](spec_kit/versiones/0_mapa_versiones.md) (dónde entra
    cada principio).
