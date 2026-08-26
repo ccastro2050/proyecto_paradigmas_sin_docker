@@ -27,7 +27,7 @@ profesional" y "lo más claro para aprender", gana la claridad:
 
 ```
 CAPA 1: FRONT (Flask, :8000)  — solo pinta HTML y llama APIs; NUNCA toca la BD
-CAPA 2: APIs (FastAPI)        — api_generica :8001 y api_facturas :8002
+CAPA 2: API (FastAPI)        — api_facturas :8002
 CAPA 3: DATOS                 — PostgreSQL | MariaDB | SQL Server (bdfacturas)
 ```
 
@@ -76,13 +76,13 @@ escrito en la documentación.
 
 | Cosa | Convención |
 |---|---|
-| Puertos públicos | front 8000 · api_generica 8001 · api_facturas 8002 (con `uvicorn`) |
+| Puertos públicos | front 8000 · · api_facturas 8002 (con `uvicorn`) |
 | Puertos de BD | PostgreSQL **5432** (el servicio instalado) · MariaDB 3306 y SQL Server 1433 (instalaciones locales de versiones futuras) |
 | Administrador gráfico | **pgAdmin 4** (viene con el instalador de PostgreSQL) |
 | Credenciales BD | la API usa `paradigmas` / `paradigmas123`; el superusuario es `postgres` / `postgres` (solo para administrar y para `crear_bd.ps1`) |
 | Bases de datos | `bdfacturas_postgres_local` · `bdfacturas_mariadb_local` · `bdfacturas_sqlserver_local` |
 | Nombres de código | snake_case en español; clases PascalCase; interfaces con prefijo `i_`/`I` |
-| Documentación de APIs | api_generica: `/swagger` · api_facturas: `/docs` |
+| Documentación de APIs | api_facturas: `/docs` |
 
 ## Artículo 7 — Desarrollo con recarga en caliente
 
