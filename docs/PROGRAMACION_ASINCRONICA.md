@@ -149,6 +149,5 @@ event loop de uvicorn atiende OTRAS peticiones con el mismo y único hilo.
    <https://learn.microsoft.com/dotnet/csharp/asynchronous-programming/>
 4. PHP — FPM (el modelo por procesos): <https://www.php.net/manual/es/install.fpm.php>
    y Fibers (PHP 8.1+): <https://www.php.net/manual/es/language.fibers.php>
-5. En este repositorio: [FLUJO_DE_UNA_PETICION.md](FLUJO_DE_UNA_PETICION.md)
-   (el viaje completo por las capas) y el código de la API, donde este
-   documento se ve funcionando.
+5. En este repositorio: el código de la API, donde este documento se ve
+   funcionando.
